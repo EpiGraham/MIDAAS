@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prostate Cancer Decision Support (Prototype)</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#101828;
+      --muted:#667085;
+      --border:#e4e7ec;
+      --accent:#2563eb;
+      --accent-2:#0ea5e9;
+      --shadow: 0 10px 25px rgba(16,24,40,.06);
+      --radius: 16px;
+      --maxw: 980px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family:var(--font); color:var(--text); background:var(--bg);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      background:rgba(246,247,251,.85);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--border);
+    }
+    .wrap{ max-width:var(--maxw); margin:0 auto; padding:16px; }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .brand{ font-weight:650; letter-spacing:.2px; }
+    nav{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .tab{
+      border:1px solid var(--border);
+      background:var(--card);
+      padding:8px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:14px;
+      color:var(--muted);
+    }
+    .tab[aria-current="page"]{
+      border-color: rgba(37,99,235,.25);
+      color:var(--accent);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+    }
+    main .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+      padding:18px 0 34px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .card h2{ margin:0 0 8px; font-size:18px; }
+    .sub{ color:var(--muted); font-size:14px; margin:0 0 12px; line-height:1.4; }
+    label{ display:block; font-size:13px; color:var(--muted); margin:10px 0 6px; }
+    input, select, textarea{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:15px;
+      outline:none;
+      background:#fff;
+    }
+    textarea{ min-height:110px; resize:vertical; }
+    input:focus, select:focus, textarea:focus{
+      border-color: rgba(37,99,235,.35);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+    }
+    .row{ display:grid; grid-template-columns:1fr; gap:10px; }
+    @media (min-width: 760px){
+      .row{ grid-template-columns:1fr 1fr; }
+    }
+    .actions{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;
+    }
+    button{
+      border:1px solid var(--border);
+      background:var(--card);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .primary{
+      background: linear-gradient(180deg, rgba(37,99,235,1), rgba(14,165,233,1));
+      color:#fff;
+      border:none;
+    }
+    .danger{ color:#b42318; border-color: rgba(180,35,24,.25); }
+    .pillrow{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+    .pill{
+      font-size:13px; color:var(--muted);
+      padding:6px 10px; border:1px solid var(--border);
+      border-radius:999px; cursor:pointer; background:#fff;
+    }
+    .pill.active{
+      color:var(--accent);
+      border-color: rgba(37,99,235,.25);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+    }
+    .list{ display:flex; flex-direction:column; gap:10px; }
+    .item{
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .item h3{ margin:0 0 4px; font-size:15px; }
+    .meta{ color:var(--muted); font-size:13px; }
+    .small{ font-size:13px; color:var(--muted); }
+    .hidden{ display:none !important; }
+    .twoCol{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    @media (min-width: 920px){
+      .twoCol{ grid-template-columns: 1.1fr .9fr; }
+    }
+    audio{ width:100%; margin-top:10px; }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      padding:2px 6px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#fff;
+      color:var(--muted);
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap topbar">
+    <div class="brand">Decision Support (Prototype)</div>
+    <nav aria-label="Primary">
+      <button class="tab" data-view="info" aria-current="page">Patient Info</button>
+      <button class="tab" data-view="stories">Stories</button>
+      <button class="tab" data-view="notes">Notes</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- PATIENT INFO -->
+  <section id="view-info" class="grid">
+    <div class="card">
+      <h2>Patient Info</h2>
+      <p class="sub">Enter what you know. You can leave anything blank and come back later.</p>
+
+      <div class="row">
+        <div>
+          <label for="ageRange">Age range (optional)</label>
+          <select id="ageRange">
+            <option value="">— Select —</option>
+            <option>Under 50</option>
+            <option>50–59</option>
+            <option>60–69</option>
+            <option>70–79</option>
+            <option>80+</option>
+          </select>
+        </div>
+        <div>
+          <label for="roleNow">Using the app as (optional)</label>
+          <select id="roleNow">
+            <option value="">— Select —</option>
+            <option>Patient</option>
+            <option>Partner/Caregiver</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="concern">Biggest concern right now (optional)</label>
+      <input id="concern" placeholder="e.g., side effects, peace of mind, uncertainty..." />
+
+      <div class="row">
+        <div>
+          <label for="psa">PSA (optional)</label>
+          <input id="psa" inputmode="decimal" placeholder="e.g., 6.2" />
+        </div>
+        <div>
+          <label for="gradeGroup">Grade Group (optional)</label>
+          <select id="gradeGroup">
+            <option value="">— Select —</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="stage">Clinical stage (optional)</label>
+      <select id="stage">
+        <option value="">— Select —</option>
+        <option>T1</option><option>T2</option><option>T3</option><option>Not sure</option>
+      </select>
+
+      <label for="doctorSaid">What has your doctor said so far? (optional)</label>
+      <textarea id="doctorSaid" placeholder="Write anything you want to remember..."></textarea>
+
+      <div class="actions">
+        <button class="primary" id="saveProfile">Save</button>
+        <span class="small" id="saveStatus" role="status" aria-live="polite"></span>
+      </div>
+      <p class="small">Prototype note: this demo stores data in your browser (<span class="kbd">localStorage</span>).</p>
+    </div>
+  </section>
+
+  <!-- STORIES -->
+  <section id="view-stories" class="grid hidden">
+    <div class="card">
+      <h2>Stories (Audio)</h2>
+      <p class="sub">Browse interviews by theme. Audio files shown here are placeholders.</p>
+
+      <label for="storySearch">Search</label>
+      <input id="storySearch" placeholder="Search by title, theme, tag..." />
+
+      <div class="pillrow" id="themePills" aria-label="Themes"></div>
+
+      <div class="twoCol">
+        <div class="card" style="box-shadow:none; border-style:dashed;">
+          <h2 style="font-size:16px;margin-bottom:6px;">Story list</h2>
+          <div class="list" id="storyList"></div>
+        </div>
+
+        <div class="card" style="box-shadow:none; border-style:dashed;">
+          <h2 style="font-size:16px;margin-bottom:6px;">Now playing</h2>
+          <div id="storyDetail" class="small">
+            Select a story to view details and play audio.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOTES -->
+  <section id="view-notes" class="grid hidden">
+    <div class="card">
+      <h2>Notes</h2>
+      <p class="sub">Use this as a private journal for thoughts and questions.</p>
+
+      <div class="actions">
+        <button class="primary" id="newNote">+ New note</button>
+      </div>
+
+      <div class="twoCol" style="margin-top:12px;">
+        <div class="card" style="box-shadow:none; border-style:dashed;">
+          <h2 style="font-size:16px;margin-bottom:6px;">My notes</h2>
+          <div class="list" id="notesList"></div>
+        </div>
+
+        <div class="card" style="box-shadow:none; border-style:dashed;">
+          <h2 style="font-size:16px;margin-bottom:6px;">Edit note</h2>
+          <div id="noteEditorEmpty" class="small">Select a note or create a new one.</div>
+
+          <div id="noteEditor" class="hidden">
+            <input id="noteTitle" placeholder="Title (optional)" />
+            <label for="noteBody">Note</label>
+            <textarea id="noteBody" placeholder="Write here..."></textarea>
+            <div class="actions">
+              <button class="primary" id="saveNote">Save</button>
+              <button class="danger" id="deleteNote">Delete</button>
+              <span class="small" id="noteStatus" role="status" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="small">Prototype note: notes are stored in your browser (<span class="kbd">localStorage</span>).</p>
+    </div>
+  </section>
+</main>
+
+<script>
+  // ---------- Simple router ----------
+  const tabs = document.querySelectorAll(".tab");
+  const views = {
+    info: document.getElementById("view-info"),
+    stories: document.getElementById("view-stories"),
+    notes: document.getElementById("view-notes")
+  };
+  function setView(name){
+    Object.entries(views).forEach(([k, el]) => el.classList.toggle("hidden", k !== name));
+    tabs.forEach(t => t.setAttribute("aria-current", t.dataset.view === name ? "page" : "false"));
+  }
+  tabs.forEach(t => t.addEventListener("click", () => setView(t.dataset.view)));
+
+  // ---------- Storage helpers ----------
+  const LS_KEYS = {
+    profile: "pcds_profile_v1",
+    notes: "pcds_notes_v1"
+  };
+  const load = (k, fallback) => {
+    try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; }
+  };
+  const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  // ---------- Patient info ----------
+  const elAge = document.getElementById("ageRange");
+  const elRole = document.getElementById("roleNow");
+  const elConcern = document.getElementById("concern");
+  const elPSA = document.getElementById("psa");
+  const elGG = document.getElementById("gradeGroup");
+  const elStage = document.getElementById("stage");
+  const elDoc = document.getElementById("doctorSaid");
+  const saveProfileBtn = document.getElementById("saveProfile");
+  const saveStatus = document.getElementById("saveStatus");
+
+  function hydrateProfile(){
+    const p = load(LS_KEYS.profile, {});
+    elAge.value = p.ageRange || "";
+    elRole.value = p.roleNow || "";
+    elConcern.value = p.concern || "";
+    elPSA.value = p.psa || "";
+    elGG.value = p.gradeGroup || "";
+    elStage.value = p.stage || "";
+    elDoc.value = p.doctorSaid || "";
+  }
+  hydrateProfile();
+
+  saveProfileBtn.addEventListener("click", () => {
+    const profile = {
+      ageRange: elAge.value,
+      roleNow: elRole.value,
+      concern: elConcern.value.trim(),
+      psa: elPSA.value.trim(),
+      gradeGroup: elGG.value,
+      stage: elStage.value,
+      doctorSaid: elDoc.value.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    save(LS_KEYS.profile, profile);
+    saveStatus.textContent = "Saved.";
+    setTimeout(()=> saveStatus.textContent = "", 1200);
+  });
+
+  // ---------- Stories (placeholder data) ----------
+  const STORIES = [
+    { id:"s1", title:"Choosing Active Surveillance", themes:["Active Surveillance","Peace of mind"], tags:["follow-up","uncertainty"], duration:"8:42", audioUrl:"", transcript:"(Optional transcript goes here.)"},
+    { id:"s2", title:"Deciding on Surgery", themes:["Surgery","Side effects"], tags:["recovery","urinary"], duration:"10:05", audioUrl:"", transcript:""},
+    { id:"s3", title:"Radiation Logistics and Routine", themes:["Radiation","Work & time"], tags:["appointments","fatigue"], duration:"7:18", audioUrl:"", transcript:""}
+  ];
+  const themes = Array.from(new Set(STORIES.flatMap(s => s.themes))).sort();
+
+  const storySearch = document.getElementById("storySearch");
+  const themePills = document.getElementById("themePills");
+  const storyList = document.getElementById("storyList");
+  const storyDetail = document.getElementById("storyDetail");
+  let activeTheme = "";
+
+  function renderThemePills(){
+    themePills.innerHTML = "";
+    const all = document.createElement("button");
+    all.className = "pill" + (activeTheme==="" ? " active" : "");
+    all.textContent = "All";
+    all.onclick = () => { activeTheme=""; renderThemePills(); renderStoryList(); };
+    themePills.appendChild(all);
+
+    themes.forEach(th => {
+      const b = document.createElement("button");
+      b.className = "pill" + (activeTheme===th ? " active" : "");
+      b.textContent = th;
+      b.onclick = () => { activeTheme=th; renderThemePills(); renderStoryList(); };
+      themePills.appendChild(b);
+    });
+  }
+
+  function matchesStory(s, q){
+    const hay = (s.title + " " + s.themes.join(" ") + " " + s.tags.join(" ")).toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+
+  function renderStoryList(){
+    const q = storySearch.value.trim();
+    const filtered = STORIES.filter(s => {
+      const themeOk = !activeTheme || s.themes.includes(activeTheme);
+      const qOk = !q || matchesStory(s, q);
+      return themeOk && qOk;
+    });
+
+    storyList.innerHTML = "";
+    if(filtered.length === 0){
+      storyList.innerHTML = `<div class="small">No stories found.</div>`;
+      storyDetail.innerHTML = `Select a story to view details and play audio.`;
+      return;
+    }
+
+    filtered.forEach(s => {
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = `
+        <div style="min-width:0">
+          <h3>${s.title}</h3>
+          <div class="meta">${s.themes.join(" • ")}${s.tags.length ? " • " + s.tags.join(", ") : ""}</div>
+          <div class="meta">Duration: ${s.duration}</div>
+        </div>
+        <div><button class="primary">Open</button></div>
+      `;
+      el.querySelector("button").onclick = () => openStory(s.id);
+      storyList.appendChild(el);
+    });
+  }
+
+  function openStory(id){
+    const s = STORIES.find(x => x.id === id);
+    const audioHtml = s.audioUrl
+      ? `<audio controls src="${s.audioUrl}"></audio>`
+      : `<div class="small">Audio URL not set for this prototype. Add <span class="kbd">audioUrl</span> to the story data.</div>`;
+
+    const transcriptHtml = s.transcript
+      ? `<details style="margin-top:10px;">
+           <summary class="small">Transcript (optional)</summary>
+           <div class="small" style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(s.transcript)}</div>
+         </details>`
+      : "";
+
+    storyDetail.innerHTML = `
+      <div>
+        <div style="font-weight:650; margin-bottom:6px;">${s.title}</div>
+        <div class="meta">${s.themes.map(t=>`<span class="kbd">${t}</span>`).join(" ")}</div>
+        ${audioHtml}
+        ${transcriptHtml}
+        <div class="small" style="margin-top:12px;">
+          Tip: you can capture reactions in <span class="kbd">Notes</span>.
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  storySearch.addEventListener("input", renderStoryList);
+  renderThemePills();
+  renderStoryList();
+
+  // ---------- Notes ----------
+  const notesList = document.getElementById("notesList");
+  const newNoteBtn = document.getElementById("newNote");
+  const noteEditorEmpty = document.getElementById("noteEditorEmpty");
+  const noteEditor = document.getElementById("noteEditor");
+  const noteTitle = document.getElementById("noteTitle");
+  const noteBody = document.getElementById("noteBody");
+  const saveNoteBtn = document.getElementById("saveNote");
+  const deleteNoteBtn = document.getElementById("deleteNote");
+  const noteStatus = document.getElementById("noteStatus");
+
+  let currentNoteId = null;
+
+  function loadNotes(){ return load(LS_KEYS.notes, []); }
+  function storeNotes(notes){ save(LS_KEYS.notes, notes); }
+
+  function renderNotesList(){
+    const notes = loadNotes().sort((a,b)=> (b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+    notesList.innerHTML = "";
+    if(notes.length === 0){
+      notesList.innerHTML = `<div class="small">No notes yet.</div>`;
+      return;
+    }
+    notes.forEach(n => {
+      const el = document.createElement("div");
+      el.className = "item";
+      const snippet = (n.body || "").slice(0, 70).trim();
+      const date = new Date(n.updatedAt || n.createdAt).toLocaleDateString();
+      el.innerHTML = `
+        <div style="min-width:0">
+          <h3>${escapeHtml(n.title || "Untitled")}</h3>
+          <div class="meta">${date}${snippet ? " • " + escapeHtml(snippet) + (n.body.length>70?"…":"") : ""}</div>
+        </div>
+        <div><button>Open</button></div>
+      `;
+      el.querySelector("button").onclick = () => openNote(n.id);
+      notesList.appendChild(el);
+    });
+  }
+
+  function openNote(id){
+    const notes = loadNotes();
+    const n = notes.find(x => x.id === id);
+    if(!n) return;
+    currentNoteId = id;
+    noteEditorEmpty.classList.add("hidden");
+    noteEditor.classList.remove("hidden");
+    noteTitle.value = n.title || "";
+    noteBody.value = n.body || "";
+    noteStatus.textContent = "";
+  }
+
+  newNoteBtn.addEventListener("click", () => {
+    const id = "n_" + Math.random().toString(36).slice(2, 10);
+    const now = new Date().toISOString();
+    const notes = loadNotes();
+    const n = { id, title:"", body:"", createdAt: now, updatedAt: now };
+    notes.push(n);
+    storeNotes(notes);
+    renderNotesList();
+    openNote(id);
+  });
+
+  saveNoteBtn.addEventListener("click", () => {
+    if(!currentNoteId) return;
+    const notes = loadNotes();
+    const idx = notes.findIndex(x => x.id === currentNoteId);
+    if(idx === -1) return;
+    notes[idx].title = noteTitle.value.trim();
+    notes[idx].body = noteBody.value.trim();
+    notes[idx].updatedAt = new Date().toISOString();
+    storeNotes(notes);
+    renderNotesList();
+    noteStatus.textContent = "Saved.";
+    setTimeout(()=> noteStatus.textContent = "", 1200);
+  });
+
+  deleteNoteBtn.addEventListener("click", () => {
+    if(!currentNoteId) return;
+    if(!confirm("Delete this note?")) return;
+    const notes = loadNotes().filter(x => x.id !== currentNoteId);
+    storeNotes(notes);
+    currentNoteId = null;
+    noteEditor.classList.add("hidden");
+    noteEditorEmpty.classList.remove("hidden");
+    renderNotesList();
+  });
+
+  renderNotesList();
+</script>
+</body>
+</html>
