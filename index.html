@@ -206,12 +206,12 @@
     <div class="card">
       <h2>Stories (Audio via Text-to-Speech)</h2>
       <p class="sub">
-        Stories are loaded from <span class="kbd">healthtalk_interviews.csv</span> in the same folder as this page.
-        Audio is generated on your device using text-to-speech (prototype).
+        Stories are loaded from <span class="kbd">healthtalk_interviews.csv</span>.
+        Text-to-speech uses the <span class="kbd">narrative</span> field (rows without it are excluded).
       </p>
 
       <label for="storySearch">Search</label>
-      <input id="storySearch" placeholder="Search by title or transcript..." />
+      <input id="storySearch" placeholder="Search by title or narrative..." />
 
       <div class="pillrow" id="themePills" aria-label="Themes"></div>
 
@@ -285,11 +285,8 @@
 
   // ---------- Storage helpers ----------
   const LS_KEYS = { profile: "pcds_profile_v1", notes: "pcds_notes_v1" };
-  const load = (k, fallback) => {
-    try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; }
-  };
+  const load = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } };
   const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-
   function escapeHtml(str){
     return (str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
@@ -351,7 +348,6 @@
       cur += c;
     }
     if(cur.length || row.length){ row.push(cur); rows.push(row); }
-
     const header = (rows.shift() || []).map(h => h.trim());
     return rows
       .filter(r => r.some(x => (x ?? "").trim() !== ""))
@@ -368,12 +364,9 @@
   }
 
   // ---------- TTS helpers ----------
-  function ttsSupported(){
-    return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
-  }
-  function ttsStop(){
-    try { window.speechSynthesis.cancel(); } catch {}
-  }
+  function ttsSupported(){ return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window; }
+  function ttsStop(){ try { window.speechSynthesis.cancel(); } catch {} }
+
   function chunkForTTS(text){
     const cleaned = (text || "").replace(/\s+\n/g, "\n").trim();
     if(!cleaned) return [];
@@ -407,6 +400,7 @@
     if(cur) parts.push(cur);
     return parts;
   }
+
   function speakChunks(chunks){
     if(!ttsSupported() || chunks.length === 0) return;
     ttsStop();
@@ -444,15 +438,19 @@
     const csvText = await res.text();
     const rows = parseCSV(csvText);
 
-    STORIES = rows.map((r, idx) => {
-      const transcript = (r.transcript || "").trim();
+    // IMPORTANT: use "narrative" for TTS and EXCLUDE missing/blank narrative
+    const usable = rows.filter(r => (r.narrative || "").trim().length > 0);
+
+    STORIES = usable.map((r, idx) => {
+      const narrative = (r.narrative || "").trim();
       const title = (r.title || `Story ${idx+1}`).trim();
+
       const tags = [];
       if(r.age_at_diagnosis) tags.push(`Dx age ${r.age_at_diagnosis}`);
       if(r.age_at_interview) tags.push(`Interview age ${r.age_at_interview}`);
       if(r.gender) tags.push(r.gender);
 
-      // Prototype: single theme. You can expand to real themes later.
+      // Prototype: single theme. Expand later (keyword mapping, curated themes, etc.)
       const baseThemes = ["Treatment decision"];
 
       return {
@@ -460,13 +458,20 @@
         title,
         themes: baseThemes,
         tags,
-        duration: transcript ? approximateDuration(transcript) : "",
-        transcript,
-        profileUrl: r.profile_url || ""
+        duration: approximateDuration(narrative),
+        narrative,                 // TTS text
+        transcript: (r.transcript || "").trim(), // optional, shown as text if present
+        profileUrl: (r.profile_url || "").trim()
       };
     });
 
     themes = Array.from(new Set(STORIES.flatMap(s => s.themes))).sort();
+
+    // Optional: show load stats
+    const excluded = rows.length - usable.length;
+    if(excluded > 0){
+      console.log(`Excluded ${excluded} rows with missing narrative.`);
+    }
   }
 
   function renderThemePills(){
@@ -487,7 +492,13 @@
   }
 
   function matchesStory(s, q){
-    const hay = (s.title + " " + (s.transcript || "") + " " + s.themes.join(" ") + " " + s.tags.join(" ")).toLowerCase();
+    const hay = (
+      s.title + " " +
+      (s.narrative || "") + " " +
+      (s.transcript || "") + " " +
+      s.themes.join(" ") + " " +
+      s.tags.join(" ")
+    ).toLowerCase();
     return hay.includes(q.toLowerCase());
   }
 
@@ -513,7 +524,7 @@
         <div style="min-width:0">
           <h3>${escapeHtml(s.title)}</h3>
           <div class="meta">${escapeHtml(s.themes.join(" • "))}${s.tags.length ? " • " + escapeHtml(s.tags.join(", ")) : ""}</div>
-          ${s.duration ? `<div class="meta">Estimated listening time: ${escapeHtml(s.duration)}</div>` : ""}
+          <div class="meta">Estimated listening time: ${escapeHtml(s.duration)}</div>
         </div>
         <div><button class="primary">Open</button></div>
       `;
@@ -532,16 +543,23 @@
           <button class="primary" id="ttsPlay">Play (Text-to-speech)</button>
           <button id="ttsStop">Stop</button>
         </div>
-        <div class="small">Prototype audio: generated on your device using text-to-speech.</div>
+        <div class="small">Prototype audio: generated on your device using text-to-speech from <span class="kbd">narrative</span>.</div>
       `
       : `<div class="small">Text-to-speech is not supported in this browser.</div>`;
 
+    const narrativeHtml = `
+      <details style="margin-top:10px;">
+        <summary class="small">Narrative text (used for audio)</summary>
+        <div class="small" style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(s.narrative)}</div>
+      </details>
+    `;
+
     const transcriptHtml = s.transcript
-      ? `<details style="margin-top:10px;" open>
-           <summary class="small">Transcript</summary>
+      ? `<details style="margin-top:10px;">
+           <summary class="small">Transcript (optional)</summary>
            <div class="small" style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(s.transcript)}</div>
          </details>`
-      : `<div class="small">No transcript available.</div>`;
+      : "";
 
     const sourceHtml = s.profileUrl
       ? `<div class="small" style="margin-top:10px;">
@@ -553,8 +571,9 @@
       <div>
         <div style="font-weight:650; margin-bottom:6px;">${escapeHtml(s.title)}</div>
         <div class="meta">${s.themes.map(t=>`<span class="kbd">${escapeHtml(t)}</span>`).join(" ")}</div>
-        ${s.duration ? `<div class="meta" style="margin-top:6px;">Estimated listening time: ${escapeHtml(s.duration)}</div>` : ""}
+        <div class="meta" style="margin-top:6px;">Estimated listening time: ${escapeHtml(s.duration)}</div>
         ${ttsControls}
+        ${narrativeHtml}
         ${transcriptHtml}
         ${sourceHtml}
         <div class="small" style="margin-top:12px;">
@@ -565,12 +584,8 @@
 
     const playBtn = storyDetail.querySelector("#ttsPlay");
     const stopBtn = storyDetail.querySelector("#ttsStop");
-    if(playBtn){
-      playBtn.onclick = () => speakChunks(chunkForTTS(s.transcript || ""));
-    }
-    if(stopBtn){
-      stopBtn.onclick = () => ttsStop();
-    }
+    if(playBtn){ playBtn.onclick = () => speakChunks(chunkForTTS(s.narrative || "")); }
+    if(stopBtn){ stopBtn.onclick = () => ttsStop(); }
   }
 
   storySearch.addEventListener("input", renderStoryList);
