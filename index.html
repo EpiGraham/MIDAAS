@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Prostate Cancer Decision Support (Prototype)</title>
+  <title>MIDAAS – Prototype</title>
   <style>
     :root{
       --bg:#f6f7fb;
@@ -19,9 +19,7 @@
       --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
     *{ box-sizing:border-box; }
-    body{
-      margin:0; font-family:var(--font); color:var(--text); background:var(--bg);
-    }
+    body{ margin:0; font-family:var(--font); color:var(--text); background:var(--bg); }
     header{
       position:sticky; top:0; z-index:10;
       background:rgba(246,247,251,.85);
@@ -29,13 +27,9 @@
       border-bottom:1px solid var(--border);
     }
     .wrap{ max-width:var(--maxw); margin:0 auto; padding:16px; }
-    .topbar{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-    }
+    .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .brand{ font-weight:650; letter-spacing:.2px; }
-    nav{
-      display:flex; gap:8px; flex-wrap:wrap;
-    }
+    nav{ display:flex; gap:8px; flex-wrap:wrap; }
     .tab{
       border:1px solid var(--border);
       background:var(--card);
@@ -50,12 +44,7 @@
       color:var(--accent);
       box-shadow: 0 0 0 3px rgba(37,99,235,.10);
     }
-    main .grid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:14px;
-      padding:18px 0 34px;
-    }
+    main .grid{ display:grid; grid-template-columns: 1fr; gap:14px; padding:18px 0 34px; }
     .card{
       background:var(--card);
       border:1px solid var(--border);
@@ -81,12 +70,8 @@
       box-shadow: 0 0 0 4px rgba(37,99,235,.10);
     }
     .row{ display:grid; grid-template-columns:1fr; gap:10px; }
-    @media (min-width: 760px){
-      .row{ grid-template-columns:1fr 1fr; }
-    }
-    .actions{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;
-    }
+    @media (min-width: 760px){ .row{ grid-template-columns:1fr 1fr; } }
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
     button{
       border:1px solid var(--border);
       background:var(--card);
@@ -126,15 +111,8 @@
     .meta{ color:var(--muted); font-size:13px; }
     .small{ font-size:13px; color:var(--muted); }
     .hidden{ display:none !important; }
-    .twoCol{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:12px;
-    }
-    @media (min-width: 920px){
-      .twoCol{ grid-template-columns: 1.1fr .9fr; }
-    }
-    audio{ width:100%; margin-top:10px; }
+    .twoCol{ display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media (min-width: 920px){ .twoCol{ grid-template-columns: 1.1fr .9fr; } }
     .kbd{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 12px;
@@ -144,12 +122,14 @@
       background:#fff;
       color:var(--muted);
     }
+    a{ color: var(--accent); text-decoration: none; }
+    a:hover{ text-decoration: underline; }
   </style>
 </head>
 <body>
 <header>
   <div class="wrap topbar">
-    <div class="brand">Decision Support (Prototype)</div>
+    <div class="brand">MIDAAS (Prototype)</div>
     <nav aria-label="Primary">
       <button class="tab" data-view="info" aria-current="page">Patient Info</button>
       <button class="tab" data-view="stories">Stories</button>
@@ -224,11 +204,14 @@
   <!-- STORIES -->
   <section id="view-stories" class="grid hidden">
     <div class="card">
-      <h2>Stories (Audio)</h2>
-      <p class="sub">Browse interviews by theme. Audio files shown here are placeholders.</p>
+      <h2>Stories (Audio via Text-to-Speech)</h2>
+      <p class="sub">
+        Stories are loaded from <span class="kbd">healthtalk_interviews.csv</span> in the same folder as this page.
+        Audio is generated on your device using text-to-speech (prototype).
+      </p>
 
       <label for="storySearch">Search</label>
-      <input id="storySearch" placeholder="Search by title, theme, tag..." />
+      <input id="storySearch" placeholder="Search by title or transcript..." />
 
       <div class="pillrow" id="themePills" aria-label="Themes"></div>
 
@@ -239,7 +222,7 @@
         </div>
 
         <div class="card" style="box-shadow:none; border-style:dashed;">
-          <h2 style="font-size:16px;margin-bottom:6px;">Now playing</h2>
+          <h2 style="font-size:16px;margin-bottom:6px;">Story</h2>
           <div id="storyDetail" class="small">
             Select a story to view details and play audio.
           </div>
@@ -301,14 +284,15 @@
   tabs.forEach(t => t.addEventListener("click", () => setView(t.dataset.view)));
 
   // ---------- Storage helpers ----------
-  const LS_KEYS = {
-    profile: "pcds_profile_v1",
-    notes: "pcds_notes_v1"
-  };
+  const LS_KEYS = { profile: "pcds_profile_v1", notes: "pcds_notes_v1" };
   const load = (k, fallback) => {
     try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; }
   };
   const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  function escapeHtml(str){
+    return (str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
 
   // ---------- Patient info ----------
   const elAge = document.getElementById("ageRange");
@@ -349,19 +333,141 @@
     setTimeout(()=> saveStatus.textContent = "", 1200);
   });
 
-  // ---------- Stories (placeholder data) ----------
-  const STORIES = [
-    { id:"s1", title:"Choosing Active Surveillance", themes:["Active Surveillance","Peace of mind"], tags:["follow-up","uncertainty"], duration:"8:42", audioUrl:"", transcript:"(Optional transcript goes here.)"},
-    { id:"s2", title:"Deciding on Surgery", themes:["Surgery","Side effects"], tags:["recovery","urinary"], duration:"10:05", audioUrl:"", transcript:""},
-    { id:"s3", title:"Radiation Logistics and Routine", themes:["Radiation","Work & time"], tags:["appointments","fatigue"], duration:"7:18", audioUrl:"", transcript:""}
-  ];
-  const themes = Array.from(new Set(STORIES.flatMap(s => s.themes))).sort();
+  // ---------- CSV parsing (simple, supports quoted commas) ----------
+  function parseCSV(text){
+    const rows = [];
+    let row = [], cur = "", inQuotes = false;
+    for(let i=0;i<text.length;i++){
+      const c = text[i], n = text[i+1];
+      if(c === '"' && inQuotes && n === '"'){ cur += '"'; i++; continue; }
+      if(c === '"'){ inQuotes = !inQuotes; continue; }
+      if(c === ',' && !inQuotes){ row.push(cur); cur=""; continue; }
+      if((c === '\n' || c === '\r') && !inQuotes){
+        if(cur.length || row.length){ row.push(cur); rows.push(row); }
+        cur=""; row=[];
+        if(c === '\r' && n === '\n') i++;
+        continue;
+      }
+      cur += c;
+    }
+    if(cur.length || row.length){ row.push(cur); rows.push(row); }
 
+    const header = (rows.shift() || []).map(h => h.trim());
+    return rows
+      .filter(r => r.some(x => (x ?? "").trim() !== ""))
+      .map(r => Object.fromEntries(header.map((h, idx) => [h, (r[idx] ?? "").trim()])));
+  }
+
+  function approximateDuration(text){
+    const words = (text || "").split(/\s+/).filter(Boolean).length;
+    const wpm = 145;
+    const totalSeconds = Math.max(30, Math.round((words / wpm) * 60));
+    const mm = String(Math.floor(totalSeconds / 60)).padStart(1,"0");
+    const ss = String(totalSeconds % 60).padStart(2,"0");
+    return `${mm}:${ss}`;
+  }
+
+  // ---------- TTS helpers ----------
+  function ttsSupported(){
+    return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  }
+  function ttsStop(){
+    try { window.speechSynthesis.cancel(); } catch {}
+  }
+  function chunkForTTS(text){
+    const cleaned = (text || "").replace(/\s+\n/g, "\n").trim();
+    if(!cleaned) return [];
+    const maxLen = 900;
+    const parts = [];
+    let cur = "";
+
+    const paras = cleaned.split(/\n{2,}/);
+    for(const p of paras){
+      if((cur + "\n\n" + p).length <= maxLen){
+        cur = cur ? (cur + "\n\n" + p) : p;
+      } else {
+        if(cur) parts.push(cur);
+        if(p.length <= maxLen){
+          cur = p;
+        } else {
+          const sentences = p.split(/(?<=[.!?])\s+/);
+          let sCur = "";
+          for(const s of sentences){
+            if((sCur + " " + s).trim().length <= maxLen){
+              sCur = (sCur ? sCur + " " : "") + s;
+            } else {
+              if(sCur) parts.push(sCur);
+              sCur = s;
+            }
+          }
+          cur = sCur;
+        }
+      }
+    }
+    if(cur) parts.push(cur);
+    return parts;
+  }
+  function speakChunks(chunks){
+    if(!ttsSupported() || chunks.length === 0) return;
+    ttsStop();
+    let i = 0;
+
+    const voices = window.speechSynthesis.getVoices?.() || [];
+    const preferred = voices.find(v => /en/i.test(v.lang)) || voices[0];
+
+    const speakNext = () => {
+      if(i >= chunks.length) return;
+      const u = new SpeechSynthesisUtterance(chunks[i]);
+      u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+      if(preferred) u.voice = preferred;
+      u.onend = () => { i++; speakNext(); };
+      u.onerror = () => { i++; speakNext(); };
+      window.speechSynthesis.speak(u);
+    };
+
+    speakNext();
+  }
+
+  // ---------- Stories ----------
   const storySearch = document.getElementById("storySearch");
   const themePills = document.getElementById("themePills");
   const storyList = document.getElementById("storyList");
   const storyDetail = document.getElementById("storyDetail");
+
+  let STORIES = [];
+  let themes = [];
   let activeTheme = "";
+
+  async function loadStoriesFromCSV(){
+    const res = await fetch("./healthtalk_interviews.csv", { cache: "no-store" });
+    if(!res.ok) throw new Error("Could not load healthtalk_interviews.csv");
+    const csvText = await res.text();
+    const rows = parseCSV(csvText);
+
+    STORIES = rows.map((r, idx) => {
+      const transcript = (r.transcript || "").trim();
+      const title = (r.title || `Story ${idx+1}`).trim();
+      const tags = [];
+      if(r.age_at_diagnosis) tags.push(`Dx age ${r.age_at_diagnosis}`);
+      if(r.age_at_interview) tags.push(`Interview age ${r.age_at_interview}`);
+      if(r.gender) tags.push(r.gender);
+
+      // Prototype: single theme. You can expand to real themes later.
+      const baseThemes = ["Treatment decision"];
+
+      return {
+        id: "ht_" + idx,
+        title,
+        themes: baseThemes,
+        tags,
+        duration: transcript ? approximateDuration(transcript) : "",
+        transcript,
+        profileUrl: r.profile_url || ""
+      };
+    });
+
+    themes = Array.from(new Set(STORIES.flatMap(s => s.themes))).sort();
+  }
 
   function renderThemePills(){
     themePills.innerHTML = "";
@@ -381,7 +487,7 @@
   }
 
   function matchesStory(s, q){
-    const hay = (s.title + " " + s.themes.join(" ") + " " + s.tags.join(" ")).toLowerCase();
+    const hay = (s.title + " " + (s.transcript || "") + " " + s.themes.join(" ") + " " + s.tags.join(" ")).toLowerCase();
     return hay.includes(q.toLowerCase());
   }
 
@@ -405,9 +511,9 @@
       el.className = "item";
       el.innerHTML = `
         <div style="min-width:0">
-          <h3>${s.title}</h3>
-          <div class="meta">${s.themes.join(" • ")}${s.tags.length ? " • " + s.tags.join(", ") : ""}</div>
-          <div class="meta">Duration: ${s.duration}</div>
+          <h3>${escapeHtml(s.title)}</h3>
+          <div class="meta">${escapeHtml(s.themes.join(" • "))}${s.tags.length ? " • " + escapeHtml(s.tags.join(", ")) : ""}</div>
+          ${s.duration ? `<div class="meta">Estimated listening time: ${escapeHtml(s.duration)}</div>` : ""}
         </div>
         <div><button class="primary">Open</button></div>
       `;
@@ -418,37 +524,70 @@
 
   function openStory(id){
     const s = STORIES.find(x => x.id === id);
-    const audioHtml = s.audioUrl
-      ? `<audio controls src="${s.audioUrl}"></audio>`
-      : `<div class="small">Audio URL not set for this prototype. Add <span class="kbd">audioUrl</span> to the story data.</div>`;
+    if(!s) return;
+
+    const ttsControls = ttsSupported()
+      ? `
+        <div class="actions" style="margin-top:10px;">
+          <button class="primary" id="ttsPlay">Play (Text-to-speech)</button>
+          <button id="ttsStop">Stop</button>
+        </div>
+        <div class="small">Prototype audio: generated on your device using text-to-speech.</div>
+      `
+      : `<div class="small">Text-to-speech is not supported in this browser.</div>`;
 
     const transcriptHtml = s.transcript
-      ? `<details style="margin-top:10px;">
-           <summary class="small">Transcript (optional)</summary>
+      ? `<details style="margin-top:10px;" open>
+           <summary class="small">Transcript</summary>
            <div class="small" style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(s.transcript)}</div>
          </details>`
+      : `<div class="small">No transcript available.</div>`;
+
+    const sourceHtml = s.profileUrl
+      ? `<div class="small" style="margin-top:10px;">
+           Source profile: <a href="${escapeHtml(s.profileUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.profileUrl)}</a>
+         </div>`
       : "";
 
     storyDetail.innerHTML = `
       <div>
-        <div style="font-weight:650; margin-bottom:6px;">${s.title}</div>
-        <div class="meta">${s.themes.map(t=>`<span class="kbd">${t}</span>`).join(" ")}</div>
-        ${audioHtml}
+        <div style="font-weight:650; margin-bottom:6px;">${escapeHtml(s.title)}</div>
+        <div class="meta">${s.themes.map(t=>`<span class="kbd">${escapeHtml(t)}</span>`).join(" ")}</div>
+        ${s.duration ? `<div class="meta" style="margin-top:6px;">Estimated listening time: ${escapeHtml(s.duration)}</div>` : ""}
+        ${ttsControls}
         ${transcriptHtml}
+        ${sourceHtml}
         <div class="small" style="margin-top:12px;">
           Tip: you can capture reactions in <span class="kbd">Notes</span>.
         </div>
       </div>
     `;
-  }
 
-  function escapeHtml(str){
-    return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const playBtn = storyDetail.querySelector("#ttsPlay");
+    const stopBtn = storyDetail.querySelector("#ttsStop");
+    if(playBtn){
+      playBtn.onclick = () => speakChunks(chunkForTTS(s.transcript || ""));
+    }
+    if(stopBtn){
+      stopBtn.onclick = () => ttsStop();
+    }
   }
 
   storySearch.addEventListener("input", renderStoryList);
-  renderThemePills();
-  renderStoryList();
+
+  (async function initStories(){
+    try{
+      await loadStoriesFromCSV();
+      renderThemePills();
+      renderStoryList();
+    } catch(err){
+      console.error(err);
+      storyList.innerHTML = `<div class="small">
+        Could not load <span class="kbd">healthtalk_interviews.csv</span>.
+        Ensure it is in the same folder as <span class="kbd">index.html</span> and committed to GitHub Pages.
+      </div>`;
+    }
+  })();
 
   // ---------- Notes ----------
   const notesList = document.getElementById("notesList");
@@ -481,7 +620,7 @@
       el.innerHTML = `
         <div style="min-width:0">
           <h3>${escapeHtml(n.title || "Untitled")}</h3>
-          <div class="meta">${date}${snippet ? " • " + escapeHtml(snippet) + (n.body.length>70?"…":"") : ""}</div>
+          <div class="meta">${escapeHtml(date)}${snippet ? " • " + escapeHtml(snippet) + (n.body.length>70?"…":"") : ""}</div>
         </div>
         <div><button>Open</button></div>
       `;
